@@ -130,8 +130,13 @@ public class UserController {
      */
     @GetMapping("/get/vo")
     public BaseResponse<UserVO> getUserVOById(long id) {
-        BaseResponse<User> response = getUserById(id);
-        User user = response.getData();
+        // 修改原因：原实现调用了带管理员权限的getUserById方法，由于是同类内部调用，AOP代理不生效，导致权限校验失效
+        // 该方法本意是提供给普通用户使用的脱敏数据接口，因此改为直接查询数据库
+        // - BaseResponse<User> response = getUserById(id);
+        // - User user = response.getData();
+        ThrowUtils.throwIf(id <= 0, ErrorCode.PARAMS_ERROR);
+        User user = userService.getById(id);
+        ThrowUtils.throwIf(user == null, ErrorCode.NOT_FOUND_ERROR);
         return ResultUtils.success(userService.getUserVO(user));
     }
 
