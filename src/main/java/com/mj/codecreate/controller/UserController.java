@@ -93,6 +93,23 @@ public class UserController {
         return ResultUtils.success(result);
     }
 
+    /**
+     * 用户修改密码
+     *
+     * @param userUpdatePasswordRequest 修改密码请求
+     * @param request 请求对象
+     * @return 是否修改成功
+     */
+    @PostMapping("/update/password")
+    public BaseResponse<Boolean> updatePassword(@RequestBody UserUpdatePasswordRequest userUpdatePasswordRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(userUpdatePasswordRequest == null, ErrorCode.PARAMS_ERROR);
+        String oldPassword = userUpdatePasswordRequest.getOldPassword();
+        String newPassword = userUpdatePasswordRequest.getNewPassword();
+        String checkPassword = userUpdatePasswordRequest.getCheckPassword();
+        boolean result = userService.updatePassword(oldPassword, newPassword, checkPassword, request);
+        return ResultUtils.success(result);
+    }
+
 
 
     /**
@@ -176,8 +193,12 @@ public class UserController {
      */
     @PostMapping("/list/page/vo")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Page<UserVO>> listUserVOByPage(@RequestBody UserQueryRequest userQueryRequest) {
+    public BaseResponse<Page<UserVO>> listUserVOByPage(@RequestBody UserQueryRequest userQueryRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(userQueryRequest == null, ErrorCode.PARAMS_ERROR);
+        // 获取当前登录用户，排除自己
+        User loginUser = userService.getLoginUser(request);
+        userQueryRequest.setExcludeId(loginUser.getId());
+
         long pageNum = userQueryRequest.getPageNum();
         long pageSize = userQueryRequest.getPageSize();
         Page<User> userPage = userService.page(Page.of(pageNum, pageSize),

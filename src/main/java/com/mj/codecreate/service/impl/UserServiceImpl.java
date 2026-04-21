@@ -199,10 +199,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         String userName = userQueryRequest.getUserName();
         String userProfile = userQueryRequest.getUserProfile();
         String userRole = userQueryRequest.getUserRole();
+        Long excludeId = userQueryRequest.getExcludeId();
         String sortField = userQueryRequest.getSortField();
         String sortOrder = userQueryRequest.getSortOrder();
         return QueryWrapper.create()
                 .eq("id", id)
+                .ne("id", excludeId)
                 .eq("userRole", userRole)
                 .like("userAccount", userAccount)
                 .like("userName", userName)
@@ -220,5 +222,48 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         final String SALT = "MJ";
 
         return DigestUtils.md5DigestAsHex((userPassword + SALT).getBytes(StandardCharsets.UTF_8));
+    }
+
+    /*
+    用户修改密码
+     */
+    @Override
+    public boolean updatePassword(String oldPassword, String newPassword, String checkPassword, HttpServletRequest request) {
+        // 1.校验参数
+        if (StrUtil.hasBlank(oldPassword, newPassword, checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "参数为空");
+        }
+        if (newPassword.length() < 8 || checkPassword.length() < 8) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "新密码长度过短");
+        }
+        if (newPassword.length() > 16 || checkPassword.length() > 16) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "新密码过长");
+        }
+        if (!newPassword.equals(checkPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "两次输入的密码不一致");
+        }
+        if (oldPassword.equals(newPassword)) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "新密码不能与旧密码相同");
+        }
+
+        // 2.获取当前登录用户
+        User loginUser = getLoginUser(request);
+
+        // 3.验证旧密码是否正确
+        String encryptOldPassword = getEncryptPassword(oldPassword);
+        if (!encryptOldPassword.equals(loginUser.getUserPassword())) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "旧密码错误");
+        }
+
+        // 4.加密新密码并更新
+        String encryptNewPassword = getEncryptPassword(newPassword);
+        loginUser.setUserPassword(encryptNewPassword);
+        boolean result = this.updateById(loginUser);
+
+        if (!result) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "密码修改失败");
+        }
+
+        return true;
     }
 }

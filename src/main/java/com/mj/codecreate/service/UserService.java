@@ -102,4 +102,15 @@ public interface UserService extends IService<User> {
      * @return 加密后的用户密码
      */
     String getEncryptPassword(String userPassword);
+
+    /**
+     * 用户修改密码
+     *
+     * @param oldPassword 旧密码
+     * @param newPassword 新密码
+     * @param checkPassword 确认密码
+     * @param request 请求对象
+     * @return 是否修改成功
+     */
+    boolean updatePassword(String oldPassword, String newPassword, String checkPassword, HttpServletRequest request);
 }
